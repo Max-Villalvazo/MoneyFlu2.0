@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Base de datos MySQL
+  db:
+    image: mysql:8.0
+    container_name: finanzas_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: finanzas_db
+      MYSQL_USER: finanzas_user
+      MYSQL_PASSWORD: finanzas_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - finanzas_network
+
+  # Backend PHP + Apache
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: finanzas_backend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./backend/public:/var/www/html/public
+      - ./backend/src:/var/www/html/src
+    environment:
+      DB_HOST: db
+      DB_NAME: finanzas_db
+      DB_USER: finanzas_user
+      DB_PASS: finanzas_pass
+    depends_on:
+      - db
+    networks:
+      - finanzas_network
+
+  # phpMyAdmin (opcional, para ver la BD visualmente)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: finanzas_phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: rootpassword
+    depends_on:
+      - db
+    networks:
+      - finanzas_network
+
+volumes:
+  db_data:
+
+networks:
+  finanzas_network:
+    driver: bridge
